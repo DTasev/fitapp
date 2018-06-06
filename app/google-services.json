@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1026917879030",
+    "firebase_url": "https://fitapp-d46ad.firebaseio.com",
+    "project_id": "fitapp-d46ad",
+    "storage_bucket": "fitapp-d46ad.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1026917879030:android:874f255e284ffde6",
+        "android_client_info": {
+          "package_name": "me.dtasev.fit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1026917879030-blfsgmjv9aq9un5d8h7h737r2ogep902.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "1026917879030-blfsgmjv9aq9un5d8h7h737r2ogep902.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjVQ4UHnJBbyBoo8WK3KA7FGsCpk6M8j0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

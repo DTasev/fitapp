@@ -23,9 +23,12 @@ import android.widget.TextView
 
 import java.util.ArrayList
 import android.Manifest.permission.READ_CONTACTS
+import android.content.Intent
 
 import kotlinx.android.synthetic.main.activity_login.*
+import me.dtasev.fit.R.id.password
 import me.dtasev.fit.util.Web
+import org.json.JSONObject
 
 /**
  * A login screen that offers login via email/password.
@@ -40,7 +43,6 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
         // Set up the login form.
-        populateAutoComplete()
         password.setOnEditorActionListener(TextView.OnEditorActionListener { _, id, _ ->
             if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
                 attemptLogin()
@@ -50,45 +52,9 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
         })
 
         email_sign_in_button.setOnClickListener { attemptLogin() }
+        username.setText("android")
+        password.setText("123456")
     }
-
-    private fun populateAutoComplete() {
-        if (!mayRequestContacts()) {
-            return
-        }
-
-        loaderManager.initLoader(0, null, this)
-    }
-
-    private fun mayRequestContacts(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true
-        }
-        if (checkSelfPermission(READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            return true
-        }
-        if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(username, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
-                    .setAction(android.R.string.ok,
-                            { requestPermissions(arrayOf(READ_CONTACTS), REQUEST_READ_CONTACTS) })
-        } else {
-            requestPermissions(arrayOf(READ_CONTACTS), REQUEST_READ_CONTACTS)
-        }
-        return false
-    }
-
-    /**
-     * Callback received when a permissions request has been completed.
-     */
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,
-                                            grantResults: IntArray) {
-        if (requestCode == REQUEST_READ_CONTACTS) {
-            if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                populateAutoComplete()
-            }
-        }
-    }
-
 
     /**
      * Attempts to sign in or register the account specified by the login form.
@@ -237,40 +203,38 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
         val IS_PRIMARY = 1
     }
 
+    private fun showWorkoutIndex(response: JSONObject) {
+        val showWorkoutIndexIntent = Intent(this, WorkoutIndex::class.java)
+        showWorkoutIndexIntent.putExtra(WorkoutIndex.USER_AUTH_TOKEN, response["token"].toString())
+        startActivity(showWorkoutIndexIntent)
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
-    inner class UserLoginTask internal constructor(private val mUsername: String, private val mPassword: String) : AsyncTask<Void, Void, Boolean>() {
+    inner class UserLoginTask internal constructor(private val mUsername: String, private val mPassword: String) : AsyncTask<Void, Void, JSONObject>() {
+        private lateinit var web: Web
+        override fun doInBackground(vararg params: Void): JSONObject? {
+            web = Web()
 
-        override fun doInBackground(vararg params: Void): Boolean? {
-            // TODO: attempt authentication against a network service.
-
-            try {
-                val web = Web()
-                web.POST(mUsername, mPassword)
+            return try {
+                web.getUserAuthToken("${getString(R.string.base_url)}/api/v1/auth-login-token/", mUsername, mPassword)
             } catch (e: InterruptedException) {
-                return false
+                null
             }
-
-            return DUMMY_CREDENTIALS
-                    .map { it.split(":") }
-                    .firstOrNull { it[0] == mUsername }
-                    ?.let {
-                        // Account exists, return true if the password matches.
-                        it[1] == mPassword
-                    }
-                    ?: true
         }
 
-        override fun onPostExecute(success: Boolean?) {
+        override fun onPostExecute(success: JSONObject?) {
             mAuthTask = null
             showProgress(false)
 
-            if (success!!) {
+            if (success != null) {
                 finish()
+                Web.USER_AUTH_TOKEN = success["token"].toString()
+                showWorkoutIndex(success)
             } else {
-                password.error = getString(R.string.error_incorrect_password)
+                password.error = getString(R.string.error_incorrect_auth)
                 password.requestFocus()
             }
         }
@@ -287,11 +251,5 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
          * Id to identity READ_CONTACTS permission request.
          */
         private val REQUEST_READ_CONTACTS = 0
-
-        /**
-         * A dummy authentication store containing known user names and passwords.
-         * TODO: remove after connecting to a real authentication system.
-         */
-        private val DUMMY_CREDENTIALS = arrayOf("foo@example.com:hello", "bar@example.com:world")
     }
 }

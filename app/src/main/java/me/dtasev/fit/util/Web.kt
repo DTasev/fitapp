@@ -10,25 +10,27 @@ import java.net.URL
 import java.net.URLEncoder
 import android.util.Base64
 import android.os.StrictMode
+import me.dtasev.fit.R.id.password
+import me.dtasev.fit.models.ExerciseSet
+import me.dtasev.fit.models.WorkoutExercise
+import org.json.JSONArray
+import org.json.JSONObject
 
 
 class Web {
+    companion object {
+        var USER_AUTH_TOKEN = ""
+    }
 
-
-    fun POST(userName: String, password: String) {
-        val reqParam = "{\"username\":\"$userName\",\"password\":\"$password\"}"
-        val url = URL("http://10.0.2.2:5544/api/v1/auth-login-token/")
-        with(url.openConnection() as HttpURLConnection) {
+    fun Get(url: String, token: String): JSONObject {
+        val mUrl = URL(url)
+        with(mUrl.openConnection() as HttpURLConnection) {
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("Content-type", "application/json")
-            requestMethod = "POST"
-//            setRequestProperty("Authentication",
-//                    Base64.encodeToString("Basic $userName:$password".toByteArray(), Base64.DEFAULT))
+            requestMethod = "GET"
+//            setRequestProperty("Authorization", Base64.encodeToString("Token $token".toByteArray(), Base64.DEFAULT))
+            setRequestProperty("Authorization", "Token $token")
 
-            val wr = OutputStreamWriter(outputStream)
-            wr.write(reqParam)
-            wr.flush()
-            println("URL : $url")
+            println("URL : $mUrl")
             println("Response Code : $responseCode")
             println(responseMessage)
             val response: StringBuffer
@@ -43,9 +45,92 @@ class Web {
                     }
                     it.close()
                     println("Response : $response")
+                }
+                return JSONObject(response.toString())
+            }
+            return JSONObject("")
+        }
+    }
 
+    fun POSTNewSet(url: String, token: String, workoutExercise: WorkoutExercise, newSet: ExerciseSet): JSONObject {
+        val data = """
+            {
+                "workoutexercise_id":${workoutExercise.id},
+                "new_set":{
+                    "kgs":${newSet.kgs},
+                    "reps":${newSet.reps}
                 }
             }
+        """.trimIndent()
+
+        return POST(url, token, data, 201)
+    }
+
+    fun POST(url: String, token: String, data: String, expectedStatusCode: Int): JSONObject {
+        val mUrl = URL(url)
+        with(mUrl.openConnection() as HttpURLConnection) {
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-type", "application/json")
+            requestMethod = "POST"
+            setRequestProperty("Authorization", "Token $token")
+
+            val wr = OutputStreamWriter(outputStream)
+            wr.write(data)
+            wr.flush()
+            println("URL : $mUrl")
+            println("Response Code : $responseCode")
+            println(responseMessage)
+            val response: StringBuffer
+            if (responseCode == expectedStatusCode) {
+                response = StringBuffer()
+                val `in` = BufferedReader(InputStreamReader(inputStream))
+                `in`.use {
+                    var inputLine = it.readLine()
+                    while (inputLine != null) {
+                        response.append(inputLine)
+                        inputLine = it.readLine()
+                    }
+                    it.close()
+                    println("Response : $response")
+                }
+                return JSONObject(response.toString())
+            }
+            return JSONObject("")
+        }
+    }
+
+    fun getUserAuthToken(url: String, userName: String, password: String): JSONObject {
+        val reqParam = "{\"username\":\"$userName\",\"password\":\"$password\"}"
+        val mUrl = URL(url)
+        with(mUrl.openConnection() as HttpURLConnection) {
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-type", "application/json")
+            requestMethod = "POST"
+//            setRequestProperty("Authentication",
+//                    Base64.encodeToString("Basic $userName:$password".toByteArray(), Base64.DEFAULT))
+
+            val wr = OutputStreamWriter(outputStream)
+            wr.write(reqParam)
+            wr.flush()
+            println("URL : $mUrl")
+            println("Response Code : $responseCode")
+            println(responseMessage)
+            val response: StringBuffer
+            if (responseCode == 200) {
+                response = StringBuffer()
+                val `in` = BufferedReader(InputStreamReader(inputStream))
+                `in`.use {
+                    var inputLine = it.readLine()
+                    while (inputLine != null) {
+                        response.append(inputLine)
+                        inputLine = it.readLine()
+                    }
+                    it.close()
+                    println("Response : $response")
+                }
+                return JSONObject(response.toString())
+            }
+            return JSONObject("")
         }
 
 //        val urlConnection = url.openConnection() as HttpURLConnection

@@ -4,60 +4,57 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".WorkoutIndex">
-
+    tools:context=".ExerciseDetail">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
         android:layout_marginTop="8dp"
         android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
+            android:id="@+id/exerciseName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:paddingLeft="18dp"
-            android:text="Primary"
-            android:textAlignment="viewStart"
-            android:textSize="21sp" />
+            android:text=""
+            android:textAlignment="center"
+            android:textSize="21sp"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <ListView
-            android:id="@+id/today_primary_container"
+            android:id="@+id/exerciseSetsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="302dp" />
+
+        <EditText
+            android:id="@+id/exerciseKgs"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/border"
-            android:layout_marginBottom="16dp"
-            tools:layout_editor_absoluteX="16dp"
-            tools:layout_editor_absoluteY="113dp">
+            android:ems="10"
+            android:hint="Kgs"
+            android:inputType="numberDecimal" />
 
-        </ListView>
-
-        <TextView
+        <EditText
+            android:id="@+id/exerciseReps"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:paddingLeft="18dp"
-            android:text="Secondary"
-            android:textSize="21sp" />
+            android:ems="10"
+            android:hint="Reps"
+            android:inputType="number" />
 
-        <ListView
-            android:id="@+id/today_secondary_container"
+        <Button
+            android:id="@+id/buttonAddSet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/border"
-
-            tools:layout_editor_absoluteX="16dp"
-            tools:layout_editor_absoluteY="113dp">
-
-        </ListView>
+            android:onClick="addSet"
+            android:text="Add" />
 
     </LinearLayout>
-
-
 </android.support.constraint.ConstraintLayout>
