@@ -14,4 +14,6 @@
     <string name="permission_rationale">"Contacts permissions are needed for providing email
         completions."
     </string>
+    <string name="exercise_context_delete">Delete</string>
+    <string name="exercise_context_edit">Edit</string>
 </resources>

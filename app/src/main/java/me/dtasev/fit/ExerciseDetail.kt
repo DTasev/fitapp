@@ -1,17 +1,15 @@
 package me.dtasev.fit
 
-import android.os.AsyncTask
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.view.LayoutInflater
+import android.support.v7.app.AppCompatActivity
+import android.view.ContextMenu
+import android.view.MenuItem
 import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.TableRow
 import kotlinx.android.synthetic.main.activity_exercise_detail.*
-import kotlinx.android.synthetic.main.exercise_detail_row.view.*
 import me.dtasev.fit.R.id.*
 import me.dtasev.fit.models.ExerciseSet
-import me.dtasev.fit.models.TodayModel
 import me.dtasev.fit.models.WorkoutExercise
 import me.dtasev.fit.util.Web
 import org.json.JSONObject
@@ -22,10 +20,14 @@ class ExerciseDetail : AppCompatActivity() {
         const val EXERCISE_DETAILS = "exercise_details"
     }
 
+    val web = Web<ExerciseDetail>(WeakReference(this), Web.USER_AUTH_TOKEN)
     lateinit var workoutExercise: WorkoutExercise
 
-    lateinit var setsList: MutableList<String>
-    var newSets = mutableListOf<ExerciseSet>()
+    var setsList = mutableListOf<String>()
+    //    var newSets = mutableListOf<ExerciseSet>()
+    var selectedLongPressItem: Int = 0
+
+    val padding = "                   "
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,54 +50,75 @@ class ExerciseDetail : AppCompatActivity() {
 //                exerciseTable.addView(exerciseSetRow)
 //            }
 
-            var id = 1
-            setsList = workoutExercise.sets.map { set ->
-                "${id++}            ${set.kgs}            ${set.reps}"
-            }.toMutableList()
+            registerForContextMenu(exerciseSetsContainer)
 
-            val setsAdapter = ArrayAdapter<String>(this, R.layout.workout_index_row, setsList)
-            exerciseSetsContainer.adapter = setsAdapter
         }
+        updateSetsListView(true)
+    }
+
+    override fun onCreateContextMenu(menu: ContextMenu?, v: View?, menuInfo: ContextMenu.ContextMenuInfo?) {
+        super.onCreateContextMenu(menu, v, menuInfo)
+
+        // -1 accounts for removing the heading from the list view
+        selectedLongPressItem = (menuInfo as AdapterView.AdapterContextMenuInfo).position - 1
+        menuInflater.inflate(R.menu.exercise_set_options, menu)
+    }
+
+    override fun onContextItemSelected(item: MenuItem?): Boolean {
+        when (item!!.itemId) {
+            R.id.option1 -> {
+                deleteSet(workoutExercise.sets[selectedLongPressItem])
+                return true
+            }
+            R.id.option2 -> {
+                editSet(workoutExercise.sets[selectedLongPressItem])
+                return true
+            }
+            else -> return false
+        }
+    }
+
+    private fun deleteSet(exerciseSet: ExerciseSet) {
+        web.deleteSet("${getString(R.string.base_url)}/api/v1/sets/delete/${exerciseSet.id}", {
+            workoutExercise.sets.removeAt(workoutExercise.sets.indexOf(exerciseSet))
+            updateSetsListView(true)
+        }, null)
+    }
+
+    private fun editSet(exerciseSet: ExerciseSet) {
+
     }
 
     fun addSet(view: View) {
         val newSet = ExerciseSet(-1, exerciseKgs.text.toString().toFloat(), exerciseReps.text.toString().toInt())
-        val task = AddSetTask(WeakReference(this), Web.USER_AUTH_TOKEN, workoutExercise, newSet)
-        task.execute()
+        web.addNewSet("${getString(R.string.base_url)}/api/v1/sets/add/", workoutExercise, newSet,
+                {
+                    this.addNewSetToListView(ExerciseSet((it["new_set"] as JSONObject)["id"].toString().toInt(), newSet.kgs, newSet.reps))
+                }, null)
     }
-}
 
-class AddSetTask internal constructor(private val owner: WeakReference<ExerciseDetail>,
-                                      private val token: String,
-                                      private val workoutExercise: WorkoutExercise,
-                                      private val newSet: ExerciseSet) : AsyncTask<Void, Void, JSONObject>() {
-    private lateinit var web: Web
-    override fun doInBackground(vararg params: Void): JSONObject? {
-        web = Web()
+    private fun addNewSetToListView(newSet: ExerciseSet) {
+        workoutExercise.sets.add(newSet)
+        setsList.add("$padding${setsList.size}$padding${newSet.kgs}$padding${newSet.reps}")
 
-        return try {
-            web.POSTNewSet("${owner.get()!!.getString(R.string.base_url)}/api/v1/sets/add/", token, workoutExercise, newSet)
-        } catch (e: InterruptedException) {
-            null
+        updateSetsListView()
+    }
+
+    /**
+     * @param full Perform a full recalculation of the setsList based on the current model
+     */
+    private fun updateSetsListView(full: Boolean = false) {
+        if (full) {
+            var id = 1
+            setsList = workoutExercise.sets.map { set ->
+                "$padding${id++}$padding${set.kgs}$padding${set.reps}"
+            }.toMutableList()
+
+            // add 'heading' to list view items, as the first list view item
+            setsList.add(0, "$padding#${padding}Kgs${padding}Reps")
+
         }
-    }
-
-    override fun onPostExecute(success: JSONObject?) {
-//            showProgress(false)
-
-        if (success != null) {
-            val o = owner.get()!!
-            // add locally to owner
-            o.setsList.add("${o.workoutExercise.sets.last().id + 1}            ${newSet.kgs}            ${newSet.reps}")
-            o.newSets.add(ExerciseSet((success["new_set"] as JSONObject)["id"].toString().toInt(), newSet.kgs, newSet.reps))
-        } else {
-//                password.error = getString(R.string.error_incorrect_auth)
-//                password.requestFocus()
-        }
-    }
-
-    override fun onCancelled() {
-//            mAuthTask = null
-//            showProgress(false)
+        val setsAdapter = ArrayAdapter<String>(this, R.layout.workout_index_row, setsList)
+        exerciseSetsContainer.adapter = setsAdapter
     }
 }

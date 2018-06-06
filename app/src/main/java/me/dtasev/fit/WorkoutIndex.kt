@@ -1,25 +1,23 @@
 package me.dtasev.fit
 
 import android.content.Intent
-import android.os.AsyncTask
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import kotlinx.android.synthetic.main.activity_workout_index.*
 import me.dtasev.fit.models.TodayModel
 import me.dtasev.fit.util.Web
 import org.json.JSONObject
 import java.lang.ref.WeakReference
-import android.widget.ArrayAdapter
-import android.R.attr.data
-import android.app.Activity
 
 
 class WorkoutIndex : AppCompatActivity() {
     private lateinit var userAuthToken: String
 
     lateinit var model: TodayModel
+    val web = Web<WorkoutIndex>(WeakReference(this), Web.USER_AUTH_TOKEN)
 
     companion object {
         const val USER_AUTH_TOKEN = "user_auth_token"
@@ -31,11 +29,13 @@ class WorkoutIndex : AppCompatActivity() {
 
         userAuthToken = intent.getStringExtra(USER_AUTH_TOKEN)
 
-        val getToday = GetTodayTask(WeakReference(this), userAuthToken)
-        getToday.execute()
+        web.getToday("${getString(R.string.base_url)}/api/v1/today/", {
+            model = TodayModel(it)
+            showToday(it)
+        }, null)
     }
 
-    fun showToday(response: JSONObject) {
+    private fun showToday(response: JSONObject) {
         print(response)
         print(model.workout.date)
 
@@ -52,7 +52,7 @@ class WorkoutIndex : AppCompatActivity() {
     }
 
 
-    fun displayExercise(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+    private fun displayExercise(parent: AdapterView<*>, view: View, position: Int, id: Long) {
         val exerciseDetail = Intent(this, ExerciseDetail::class.java)
         exerciseDetail.putExtra(ExerciseDetail.EXERCISE_DETAILS, model.workout.primaryExercises[position])
         exerciseDetail.putExtra(ExerciseDetail.EXERCISE_DETAILS, model.workout.primaryExercises[position])
@@ -68,35 +68,4 @@ class WorkoutIndex : AppCompatActivity() {
 //            }
 //        }
 //    }
-}
-
-class GetTodayTask internal constructor(private val owner: WeakReference<WorkoutIndex>, private val token: String) : AsyncTask<Void, Void, JSONObject>() {
-    private lateinit var web: Web
-    override fun doInBackground(vararg params: Void): JSONObject? {
-        web = Web()
-
-        return try {
-            web.Get("${owner.get()!!.getString(R.string.base_url)}/api/v1/today/", token)
-        } catch (e: InterruptedException) {
-            null
-        }
-    }
-
-    override fun onPostExecute(success: JSONObject?) {
-//            mAuthTask = null
-//            showProgress(false)
-
-        if (success != null) {
-            owner.get()!!.model = TodayModel(success)
-            owner.get()!!.showToday(success)
-        } else {
-//                password.error = getString(R.string.error_incorrect_auth)
-//                password.requestFocus()
-        }
-    }
-
-    override fun onCancelled() {
-//            mAuthTask = null
-//            showProgress(false)
-    }
 }

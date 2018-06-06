@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="base_url">https://honest-stingray-68.localtunnel.me</string>
+    <!--<string name="base_url">http://10.0.2.2:5544</string>-->
+    <string name="base_url">https://bright-earwig-18.localtunnel.me</string>
 </resources>

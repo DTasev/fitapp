@@ -29,6 +29,7 @@ import kotlinx.android.synthetic.main.activity_login.*
 import me.dtasev.fit.R.id.password
 import me.dtasev.fit.util.Web
 import org.json.JSONObject
+import java.lang.ref.WeakReference
 
 /**
  * A login screen that offers login via email/password.
@@ -37,7 +38,7 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
-    private var mAuthTask: UserLoginTask? = null
+    private var web = Web<LoginActivity>(WeakReference(this), null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +63,7 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
      * errors are presented and no actual login attempt is made.
      */
     private fun attemptLogin() {
-        if (mAuthTask != null) {
+        if (web.inProgress) {
             return
         }
 
@@ -103,8 +104,19 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true)
-            mAuthTask = UserLoginTask(usernameStr, passwordStr)
-            mAuthTask!!.execute(null as Void?)
+            web.login("${getString(R.string.base_url)}/api/v1/auth-login-token/", usernameStr, passwordStr,
+                    {
+                        finish()
+                        Web.USER_AUTH_TOKEN = it["token"].toString()
+                        showWorkoutIndex(it)
+                        showProgress(false)
+
+                    },
+                    {
+                        showProgress(false)
+                        password.error = getString(R.string.error_incorrect_auth)
+                        password.requestFocus()
+                    })
         }
     }
 
@@ -207,49 +219,5 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
         val showWorkoutIndexIntent = Intent(this, WorkoutIndex::class.java)
         showWorkoutIndexIntent.putExtra(WorkoutIndex.USER_AUTH_TOKEN, response["token"].toString())
         startActivity(showWorkoutIndexIntent)
-    }
-
-    /**
-     * Represents an asynchronous login/registration task used to authenticate
-     * the user.
-     */
-    inner class UserLoginTask internal constructor(private val mUsername: String, private val mPassword: String) : AsyncTask<Void, Void, JSONObject>() {
-        private lateinit var web: Web
-        override fun doInBackground(vararg params: Void): JSONObject? {
-            web = Web()
-
-            return try {
-                web.getUserAuthToken("${getString(R.string.base_url)}/api/v1/auth-login-token/", mUsername, mPassword)
-            } catch (e: InterruptedException) {
-                null
-            }
-        }
-
-        override fun onPostExecute(success: JSONObject?) {
-            mAuthTask = null
-            showProgress(false)
-
-            if (success != null) {
-                finish()
-                Web.USER_AUTH_TOKEN = success["token"].toString()
-                showWorkoutIndex(success)
-            } else {
-                password.error = getString(R.string.error_incorrect_auth)
-                password.requestFocus()
-            }
-        }
-
-        override fun onCancelled() {
-            mAuthTask = null
-            showProgress(false)
-        }
-    }
-
-    companion object {
-
-        /**
-         * Id to identity READ_CONTACTS permission request.
-         */
-        private val REQUEST_READ_CONTACTS = 0
     }
 }

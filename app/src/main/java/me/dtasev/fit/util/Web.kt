@@ -1,29 +1,28 @@
 package me.dtasev.fit.util
 
-import android.app.DownloadManager
-import java.io.BufferedInputStream
+import android.os.AsyncTask
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
-import android.util.Base64
-import android.os.StrictMode
-import me.dtasev.fit.R.id.password
 import me.dtasev.fit.models.ExerciseSet
 import me.dtasev.fit.models.WorkoutExercise
-import org.json.JSONArray
 import org.json.JSONObject
+import java.lang.ref.WeakReference
 
 
-class Web {
+class Web<T> constructor(private val owner: WeakReference<T>, private val token: String?) {
+    var inProgress = false
+
     companion object {
         var USER_AUTH_TOKEN = ""
     }
 
-    fun Get(url: String, token: String): JSONObject {
+
+    fun get(url: String): JSONObject {
         val mUrl = URL(url)
+        inProgress = true
         with(mUrl.openConnection() as HttpURLConnection) {
             setRequestProperty("Accept", "application/json")
             requestMethod = "GET"
@@ -46,37 +45,44 @@ class Web {
                     it.close()
                     println("Response : $response")
                 }
+                inProgress = false
                 return JSONObject(response.toString())
             }
+            inProgress = false
             return JSONObject("")
         }
     }
 
-    fun POSTNewSet(url: String, token: String, workoutExercise: WorkoutExercise, newSet: ExerciseSet): JSONObject {
-        val data = """
-            {
-                "workoutexercise_id":${workoutExercise.id},
-                "new_set":{
-                    "kgs":${newSet.kgs},
-                    "reps":${newSet.reps}
-                }
-            }
-        """.trimIndent()
+//    fun postNewSet(url: String, workoutExercise: WorkoutExercise, newSet: ExerciseSet): JSONObject {
+//        val data = """
+//            {
+//                "workoutexercise_id":${workoutExercise.id},
+//                "new_set":{
+//                    "kgs":${newSet.kgs},
+//                    "reps":${newSet.reps}
+//                }
+//            }
+//        """.trimIndent()
+//
+//        return
+//    }
 
-        return POST(url, token, data, 201)
-    }
-
-    fun POST(url: String, token: String, data: String, expectedStatusCode: Int): JSONObject {
+    fun post(url: String, data: String?, expectedStatusCode: Int): JSONObject {
         val mUrl = URL(url)
+        inProgress = true
         with(mUrl.openConnection() as HttpURLConnection) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-type", "application/json")
             requestMethod = "POST"
-            setRequestProperty("Authorization", "Token $token")
+            if (token != null) {
+                setRequestProperty("Authorization", "Token $token")
+            }
 
             val wr = OutputStreamWriter(outputStream)
-            wr.write(data)
-            wr.flush()
+            if (data != null) {
+                wr.write(data)
+                wr.flush()
+            }
             println("URL : $mUrl")
             println("Response Code : $responseCode")
             println(responseMessage)
@@ -93,69 +99,82 @@ class Web {
                     it.close()
                     println("Response : $response")
                 }
+                inProgress = false
                 return JSONObject(response.toString())
             }
+            inProgress = false
             return JSONObject("")
         }
     }
 
-    fun getUserAuthToken(url: String, userName: String, password: String): JSONObject {
-        val reqParam = "{\"username\":\"$userName\",\"password\":\"$password\"}"
-        val mUrl = URL(url)
-        with(mUrl.openConnection() as HttpURLConnection) {
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Content-type", "application/json")
-            requestMethod = "POST"
-//            setRequestProperty("Authentication",
-//                    Base64.encodeToString("Basic $userName:$password".toByteArray(), Base64.DEFAULT))
+    fun deleteSet(url: String,
+                  onSuccess: ((JSONObject) -> Unit)?,
+                  onFailure: (() -> Unit)?): AsyncTask<Void, Void, JSONObject> {
 
-            val wr = OutputStreamWriter(outputStream)
-            wr.write(reqParam)
-            wr.flush()
-            println("URL : $mUrl")
-            println("Response Code : $responseCode")
-            println(responseMessage)
-            val response: StringBuffer
-            if (responseCode == 200) {
-                response = StringBuffer()
-                val `in` = BufferedReader(InputStreamReader(inputStream))
-                `in`.use {
-                    var inputLine = it.readLine()
-                    while (inputLine != null) {
-                        response.append(inputLine)
-                        inputLine = it.readLine()
-                    }
-                    it.close()
-                    println("Response : $response")
+        val task = WebTask({ this.post(url, "", 200) }, onSuccess, onFailure)
+        task.execute()
+        return task
+    }
+
+    fun getToday(url: String, onSuccess: ((JSONObject) -> Unit)?,
+                 onFailure: (() -> Unit)?): AsyncTask<Void, Void, JSONObject> {
+        val task = WebTask({ get(url) }, onSuccess, onFailure)
+        task.execute()
+        return task
+    }
+
+    fun login(url: String, userName: String, password: String, onSuccess: ((JSONObject) -> Unit)?, onFailure: (() -> Unit)?): AsyncTask<Void, Void, JSONObject> {
+        val reqParam = """{"username":"$userName","password":"$password"}"""
+        val task = WebTask({ post(url, reqParam, 200) }, onSuccess, onFailure)
+        task.execute()
+        return task
+    }
+
+    fun addNewSet(url: String,
+                  workoutExercise: WorkoutExercise,
+                  newSet: ExerciseSet,
+                  onSuccess: ((JSONObject) -> Unit)?,
+                  onFailure: (() -> Unit)?): WebTask {
+        val data = """
+            {
+                "workoutexercise_id":${workoutExercise.id},
+                "new_set":{
+                    "kgs":${newSet.kgs},
+                    "reps":${newSet.reps}
                 }
-                return JSONObject(response.toString())
             }
-            return JSONObject("")
-        }
+        """.trimIndent()
 
-//        val urlConnection = url.openConnection() as HttpURLConnection
-//        urlConnection.requestMethod = "POST"
-//
-//        add the POST data for token retrieval
-//        val wr = OutputStreamWriter(urlConnection.outputStream)
-//        wr.write(reqParam)
-//        wr.flush()
-//
-//        try {
-//            val `in` = BufferedInputStream(urlConnection.inputStream)
-//            BufferedReader(InputStreamReader(`in`)).use {
-//                val response = StringBuffer()
-//
-//                var inputLine = it.readLine()
-//                while (inputLine != null) {
-//                    response.append(inputLine)
-//                    inputLine = it.readLine()
-//                }
-//                it.close()
-//                println("Response : $response")
-//            }
-//        } finally {
-//            urlConnection.disconnect()
-//        }
+        val task = WebTask({ this.post(url, data, 201) }, onSuccess, onFailure)
+        task.execute()
+        return task
+    }
+}
+
+class WebTask internal constructor(private val requestCall: (() -> JSONObject),
+                                   private val onSuccess: ((JSONObject) -> Unit)?,
+                                   private val onFailure: (() -> Unit)?) : AsyncTask<Void, Void, JSONObject>() {
+
+    override fun doInBackground(vararg params: Void): JSONObject? {
+        return try {
+            requestCall.invoke()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override fun onPostExecute(success: JSONObject?) {
+//            showProgress(false)
+
+        if (success != null) {
+            onSuccess?.invoke(success)
+        } else {
+            onFailure?.invoke()
+        }
+    }
+
+    override fun onCancelled() {
+//            mAuthTask = null
+//            showProgress(false)
     }
 }

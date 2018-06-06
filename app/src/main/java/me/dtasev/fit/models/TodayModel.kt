@@ -6,7 +6,7 @@ import java.io.Serializable
 
 data class Exercise(val name: String) : Serializable
 data class ExerciseSet(val id: Int, val kgs: Float, val reps: Int) : Serializable
-data class WorkoutExercise(val id: Int, val exercise: Exercise, val sets: List<ExerciseSet>) : Serializable
+data class WorkoutExercise(val id: Int, val exercise: Exercise, val sets: MutableList<ExerciseSet>) : Serializable
 data class Workout(val id: Int, val date: String,
                    val primaryMuscleGroup: String, val secondaryMuscleGroup: String,
                    val complete: Boolean, val startTime: String?, val endTime: String?) : Serializable {
@@ -16,10 +16,6 @@ data class Workout(val id: Int, val date: String,
 
 class TodayModel(private val response: JSONObject) {
 
-//    companion object {
-//        lateinit var workout: Workout
-//    }
-
     val workout: Workout = Workout(response["id"].toString().toInt(), response["date"].toString(),
             response["primary_muscle_group"].toString(), response["secondary_muscle_group"].toString(),
             response["completed"].toString().toBoolean(), response["start_time"].toString(), response["end_time"].toString())
@@ -27,7 +23,6 @@ class TodayModel(private val response: JSONObject) {
     init {
         workout.primaryExercises = extractExercises("primary_exercises")
         workout.secondaryExercises = extractExercises("secondary_exercises")
-//        TodayModel.workout=workout
     }
 
     private fun extractExercises(jsonKey: String): List<WorkoutExercise> {
@@ -38,7 +33,7 @@ class TodayModel(private val response: JSONObject) {
             val exercise = Exercise((exerciseSets["exercise"] as JSONObject)["name"].toString())
 
             val setsArray = exerciseSets["sets"] as JSONArray
-            val setsList = List(setsArray.length()) {
+            val setsList = MutableList(setsArray.length()) {
                 val setObject = setsArray[it] as JSONObject
                 ExerciseSet(setObject["id"].toString().toInt(),
                         setObject["kgs"].toString().toFloat(),
