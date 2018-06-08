@@ -59,7 +59,8 @@ class ExerciseDetail : AppCompatActivity() {
     override fun onCreateContextMenu(menu: ContextMenu?, v: View?, menuInfo: ContextMenu.ContextMenuInfo?) {
         super.onCreateContextMenu(menu, v, menuInfo)
 
-        // -1 accounts for removing the heading from the list view
+        // We need to subtract -1, as the ListView has a heading added for prettier look
+        // subtracting gives us the actual position in the workoutExercise.sets model
         selectedLongPressItem = (menuInfo as AdapterView.AdapterContextMenuInfo).position - 1
         menuInflater.inflate(R.menu.exercise_set_options, menu)
     }
